@@ -1,8 +1,19 @@
 from flask import Flask, jsonify
-
+from flask_cors import CORS
 from banco import inicializar_banco, buscar_ultima_leitura
 
+# Isso irá mudar no deploy
+
 app = Flask(__name__)
+CORS(
+    app,
+    resources={
+        r"/api/.*": {
+            "origins": ["http://127.0.0.1:8000", "http://localhost:8000"],
+            "methods": ["GET"],
+        }
+    },
+)
 inicializar_banco()
 
 

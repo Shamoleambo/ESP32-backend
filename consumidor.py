@@ -1,7 +1,9 @@
 import json
-
+import sqlite3
 import paho.mqtt.client as mqtt
 
+from banco import inicializar_banco, salvar_leitura
+from validacao import validar_mensagem
 from config import MQTT_SERVIDOR, MQTT_PORTA, MQTT_TOPICO
 
 
@@ -20,20 +22,23 @@ def ao_receber_mensagem(cliente, dados_usuario, mensagem):
         texto = mensagem.payload.decode("utf-8")
         dados = json.loads(texto)
 
-    except (UnicodeDecodeError, json.JSONDecodeError) as erro:
-        print("Mensagem descartada: conteúdo inválido.", erro)
+        validar_mensagem(dados)
+        salvar_leitura(dados)
+
+    except (UnicodeDecodeError, ValueError) as erro:
+        print("Mensagem descartada:", erro)
         return
 
-    if not isinstance(dados, dict):
-        print("Mensagem descartada: esperado um objeto JSON.")
+    except sqlite3.Error as erro:
+        print("Falha ao salvar no banco:", erro)
         return
 
-    print("\nMensagem recebida!")
-    print("Tópico:", mensagem.topic)
-    print(json.dumps(dados, indent=2, ensure_ascii=False))
+    print("Leitura salva:", dados["estacao_id"], "sequência", dados["sequencia"])
 
 
 def main():
+    inicializar_banco()
+
     cliente = mqtt.Client(callback_api_version=mqtt.CallbackAPIVersion.VERSION2)
 
     cliente.on_connect = ao_conectar

@@ -12,6 +12,7 @@ CAMPOS = (
     "pressao_hpa",
     "mq135_adc",
     "luminosidade_adc",
+    "luminosidade_digital",
 )
 
 ESQUEMA = """
@@ -29,6 +30,8 @@ ESQUEMA = """
             CHECK (mq135_adc BETWEEN 0 AND 4095),
         luminosidade_adc INTEGER
             CHECK (luminosidade_adc BETWEEN 0 AND 4095),
+        luminosidade_digital INTEGER
+            CHECK (luminosidade_digital IN (0, 1)),
         estado_sensores TEXT NOT NULL,
         recebido_em TEXT NOT NULL
     )
@@ -89,6 +92,19 @@ def inicializar_banco():
 
                 print("Histórico migrado para o formato 2.")
 
+            colunas_atuais = {
+                linha[1] for linha in conexao.execute("PRAGMA table_info(leituras)")
+            }
+
+            if "luminosidade_digital" not in colunas_atuais:
+                conexao.execute("""
+                    ALTER TABLE leituras
+                    ADD COLUMN luminosidade_digital INTEGER
+                    CHECK (luminosidade_digital IN (0, 1))
+                """)
+
+                print("Coluna de luminosidade digital adicionada.")
+
 
 def salvar_leitura(dados):
     valores = [dados["leituras"][campo] for campo in CAMPOS]
@@ -100,9 +116,9 @@ def salvar_leitura(dados):
                 INSERT INTO leituras (
                     estacao_id, sequencia, temperatura_c, umidade_pct,
                     pressao_hpa, mq135_adc, luminosidade_adc,
-                    estado_sensores, recebido_em
+                    luminosidade_digital, estado_sensores, recebido_em
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
                 (
                     dados["estacao_id"],
@@ -131,7 +147,7 @@ def buscar_ultima_leitura():
         registro = dict(linha)
 
         return {
-            "versao": 2,
+            "versao": 3,
             "id": registro["id"],
             "estacao_id": registro["estacao_id"],
             "sequencia": registro["sequencia"],

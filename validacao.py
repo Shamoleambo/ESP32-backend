@@ -81,7 +81,7 @@ def validar_mensagem(dados):
                     and math.isfinite(valor)
                 )
 
-                if campo.endswith("_adc", "_digital"):
+                if campo.endswith(("_adc", "_digital")):
                     valido = valido and type(valor) is int
 
                 if not valido:

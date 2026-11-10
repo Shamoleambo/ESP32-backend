@@ -16,7 +16,7 @@ def validar_mensagem(dados):
 
     versao = dados.get("versao")
 
-    if type(versao) is not int or versao not in (1, 2):
+    if type(versao) is not int or versao not in (1, 2, 3):
         raise ValueError("Versão não suportada.")
 
     if dados.get("estacao_id") != "estacao-01":
@@ -32,6 +32,14 @@ def validar_mensagem(dados):
     if not isinstance(leituras, dict):
         raise ValueError("Campo leituras inválido.")
 
+    grupos = {sensor: dict(campos) for sensor, campos in CAMPOS.items()}
+
+    if versao == 3:
+        grupos["ldr"] = {"luminosidade_digital": (0, 1)}
+
+        if leituras.get("luminosidade_adc") is not None:
+            raise ValueError("O módulo digital não fornece luminosidade_adc.")
+
     # Compatibilidade temporária com o firmware anterior.
     if versao == 1:
         estados = {sensor: "nao_configurado" for sensor in CAMPOS}
@@ -44,20 +52,20 @@ def validar_mensagem(dados):
         if not isinstance(estados, dict):
             raise ValueError("Campo estado_sensores inválido.")
 
-        esperados = {campo for grupo in CAMPOS.values() for campo in grupo}
+        esperados = {campo for grupo in grupos.values() for campo in grupo}
 
     if not all(campo in leituras for campo in esperados):
         raise ValueError("Campos de leitura obrigatórios ausentes.")
 
     resultado = {
-        "versao": 2,
+        "versao": 3,
         "estacao_id": dados["estacao_id"],
         "sequencia": sequencia,
-        "leituras": {},
+        "leituras": {"luminosidade_adc": None, "luminosidade_digital": None},
         "estado_sensores": {},
     }
 
-    for sensor, campos in CAMPOS.items():
+    for sensor, campos in grupos.items():
         estado = estados.get(sensor)
 
         if not isinstance(estado, str) or estado not in ESTADOS:
@@ -73,7 +81,7 @@ def validar_mensagem(dados):
                     and math.isfinite(valor)
                 )
 
-                if campo.endswith("_adc"):
+                if campo.endswith("_adc", "_digital"):
                     valido = valido and type(valor) is int
 
                 if not valido:

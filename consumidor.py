@@ -22,7 +22,7 @@ def ao_receber_mensagem(cliente, dados_usuario, mensagem):
         texto = mensagem.payload.decode("utf-8")
         dados = json.loads(texto)
 
-        validar_mensagem(dados)
+        dados = validar_mensagem(dados)
         salvar_leitura(dados)
 
     except (UnicodeDecodeError, ValueError) as erro:

@@ -1,3 +1,4 @@
+import json
 import sqlite3
 from contextlib import closing
 from datetime import datetime, timezone
@@ -5,44 +6,110 @@ from pathlib import Path
 
 CAMINHO_BANCO = Path(__file__).resolve().parent / "estacao.sqlite3"
 
+CAMPOS = (
+    "temperatura_c",
+    "umidade_pct",
+    "pressao_hpa",
+    "mq135_adc",
+    "luminosidade_adc",
+)
+
+ESQUEMA = """
+    CREATE TABLE {tabela} (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        estacao_id TEXT NOT NULL,
+        sequencia INTEGER NOT NULL,
+        temperatura_c REAL
+            CHECK (temperatura_c BETWEEN -40 AND 80),
+        umidade_pct REAL
+            CHECK (umidade_pct BETWEEN 0 AND 100),
+        pressao_hpa REAL
+            CHECK (pressao_hpa BETWEEN 300 AND 1100),
+        mq135_adc INTEGER
+            CHECK (mq135_adc BETWEEN 0 AND 4095),
+        luminosidade_adc INTEGER
+            CHECK (luminosidade_adc BETWEEN 0 AND 4095),
+        estado_sensores TEXT NOT NULL,
+        recebido_em TEXT NOT NULL
+    )
+"""
+
 
 def inicializar_banco():
     with closing(sqlite3.connect(CAMINHO_BANCO, timeout=10)) as conexao:
-        with conexao:
-            conexao.execute("""
-                CREATE TABLE IF NOT EXISTS leituras (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    estacao_id TEXT NOT NULL,
-                    sequencia INTEGER NOT NULL,
-                    temperatura_c REAL NOT NULL
-                        CHECK (temperatura_c BETWEEN -40 AND 80),
-                    umidade_pct REAL NOT NULL
-                        CHECK (umidade_pct BETWEEN 0 AND 100),
-                    recebido_em TEXT NOT NULL
+        colunas = {linha[1] for linha in conexao.execute("PRAGMA table_info(leituras)")}
+
+        if colunas and "estado_sensores" not in colunas:
+            backup = CAMINHO_BANCO.with_name("estacao-antes-v2.sqlite3")
+
+            if backup.exists():
+                raise RuntimeError(
+                    "Backup já existe. Confira antes de migrar novamente."
                 )
-            """)
+
+            with closing(sqlite3.connect(backup)) as destino:
+                conexao.backup(destino)
+
+            print("Backup criado:", backup)
+
+        with conexao:
+            conexao.execute("BEGIN IMMEDIATE")
+
+            if not colunas:
+                conexao.execute(ESQUEMA.format(tabela="leituras"))
+
+            elif "estado_sensores" not in colunas:
+                conexao.execute(ESQUEMA.format(tabela="leituras_nova"))
+
+                estados_antigos = json.dumps(
+                    {
+                        "dht22": "ok",
+                        "bmp280": "nao_configurado",
+                        "mq135": "nao_configurado",
+                        "ldr": "nao_configurado",
+                    }
+                )
+
+                conexao.execute(
+                    """
+                    INSERT INTO leituras_nova (
+                        id, estacao_id, sequencia, temperatura_c,
+                        umidade_pct, estado_sensores, recebido_em
+                    )
+                    SELECT
+                        id, estacao_id, sequencia, temperatura_c,
+                        umidade_pct, ?, recebido_em
+                    FROM leituras
+                """,
+                    (estados_antigos,),
+                )
+
+                conexao.execute("DROP TABLE leituras")
+                conexao.execute("ALTER TABLE leituras_nova RENAME TO leituras")
+
+                print("Histórico migrado para o formato 2.")
 
 
 def salvar_leitura(dados):
-    recebido_em = datetime.now(timezone.utc).isoformat()
-    leituras = dados["leituras"]
+    valores = [dados["leituras"][campo] for campo in CAMPOS]
 
     with closing(sqlite3.connect(CAMINHO_BANCO, timeout=10)) as conexao:
         with conexao:
             conexao.execute(
                 """
                 INSERT INTO leituras (
-                    estacao_id, sequencia, temperatura_c,
-                    umidade_pct, recebido_em
+                    estacao_id, sequencia, temperatura_c, umidade_pct,
+                    pressao_hpa, mq135_adc, luminosidade_adc,
+                    estado_sensores, recebido_em
                 )
-                VALUES (?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
                 (
                     dados["estacao_id"],
                     dados["sequencia"],
-                    leituras["temperatura_c"],
-                    leituras["umidade_pct"],
-                    recebido_em,
+                    *valores,
+                    json.dumps(dados["estado_sensores"]),
+                    datetime.now(timezone.utc).isoformat(),
                 ),
             )
 
@@ -51,14 +118,27 @@ def buscar_ultima_leitura():
     with closing(sqlite3.connect(CAMINHO_BANCO, timeout=10)) as conexao:
         conexao.row_factory = sqlite3.Row
 
-        registro = conexao.execute("""
+        linha = conexao.execute("""
             SELECT *
             FROM leituras
             ORDER BY id DESC
             LIMIT 1
         """).fetchone()
 
-        return dict(registro) if registro is not None else None
+        if linha is None:
+            return None
+
+        registro = dict(linha)
+
+        return {
+            "versao": 2,
+            "id": registro["id"],
+            "estacao_id": registro["estacao_id"],
+            "sequencia": registro["sequencia"],
+            "leituras": {campo: registro[campo] for campo in CAMPOS},
+            "estado_sensores": json.loads(registro["estado_sensores"]),
+            "recebido_em": registro["recebido_em"],
+        }
 
 
 if __name__ == "__main__":

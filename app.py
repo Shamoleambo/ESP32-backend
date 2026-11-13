@@ -1,8 +1,7 @@
+import os
 from flask import Flask, jsonify
 from flask_cors import CORS
 from banco import inicializar_banco, buscar_ultima_leitura
-
-# Isso irá mudar no deploy
 
 app = Flask(__name__)
 CORS(
@@ -33,3 +32,31 @@ def consultar_ultima_leitura():
         )
 
     return jsonify(registro)
+
+@app.get("/api/estacao")
+def consultar_estacao():
+    try:
+        latitude = float(os.environ["ESTACAO_LATITUDE"])
+        longitude = float(os.environ["ESTACAO_LONGITUDE"])
+
+        if not (-90 <= latitude <= 90):
+            raise ValueError("Latitude inválida.")
+
+        if not (-180 <= longitude <= 180):
+            raise ValueError("Longitude inválida.")
+
+    except (KeyError, ValueError):
+        return jsonify({
+            "erro": "Localização da estação ausente ou inválida."
+        }), 503
+
+    return jsonify({
+        "estacao_id": "estacao-01",
+        "nome": os.environ.get(
+            "ESTACAO_NOME",
+            "Estação meteorológica"
+        ),
+        "latitude": latitude,
+        "longitude": longitude,
+        "origem_localizacao": "cadastro_manual"
+    })

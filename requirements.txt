@@ -1,3 +1,5 @@
 paho-mqtt>=2.0,<3.0
 Flask>=3.1,<4.0
 Flask-Cors
+gunicorn>=23,<24
+supervisor>=4.2,<5

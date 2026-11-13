@@ -1,10 +1,18 @@
 import json
+import os
 import sqlite3
 from contextlib import closing
 from datetime import datetime, timezone
 from pathlib import Path
 
-CAMINHO_BANCO = Path(__file__).resolve().parent / "estacao.sqlite3"
+CAMINHO_BANCO = Path(
+    os.environ.get(
+        "CAMINHO_BANCO",
+        str(Path(__file__).resolve().parent / "estacao.sqlite3"),
+    )
+)
+
+CAMINHO_BANCO.parent.mkdir(parents=True, exist_ok=True)
 
 CAMPOS = (
     "temperatura_c",

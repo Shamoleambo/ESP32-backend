@@ -9,7 +9,7 @@ CORS(
     app,
     resources={
         r"/api/.*": {
-            "origins": ["http://127.0.0.1:8000", "http://localhost:8000"],
+            "origins": ["http://127.0.0.1:8000", "http://localhost:8000", "https://estacao-meteorologica-front.onrender.com"],
             "methods": ["GET"],
         }
     },

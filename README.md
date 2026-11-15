@@ -12,6 +12,19 @@ Backend de uma estação meteorológica acadêmica voltada ao monitoramento ambi
 
 O sistema recebe mensagens MQTT publicadas pelo ESP32, valida os dados, armazena as leituras em SQLite e disponibiliza uma API HTTP para o dashboard.
 
+## Integrantes 
+
+markdown
+
+| Nome | RA | GitHub |
+| -------- | -------- | -------- |
+| Alecsandro  | H007DG5 | https://github.com/AlecsandroH |
+| Gabriel Felipe Rossetto Almeida Muçouçah | R24780-5  | https://github.com/GabrielRossettoMucoucah |
+| Sebastian  | R449FH3  | https://github.com/ |
+| Tiago Diniz Gomes | R289JI3  | https://github.com/Shamoleambo |
+| Vinicius  | R251942  | https://github.com/ |
+
+
 ## Arquitetura
 
 ```mermaid

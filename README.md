@@ -20,7 +20,7 @@ O sistema recebe mensagens MQTT publicadas pelo ESP32, valida os dados, armazena
 | Gabriel Felipe Rossetto Almeida Muçouçah | R24780-5  | https://github.com/GabrielRossettoMucoucah |
 | Sebastian  | R449FH3  | https://github.com/ |
 | Tiago Diniz Gomes | R289JI3  | https://github.com/Shamoleambo |
-| Vinicius  | R251942  | https://github.com/ |
+| Vinicius  | R251942  | https://github.com/Vinicius-Lopes07 |
 
 
 ## Arquitetura

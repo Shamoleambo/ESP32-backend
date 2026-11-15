@@ -14,8 +14,6 @@ O sistema recebe mensagens MQTT publicadas pelo ESP32, valida os dados, armazena
 
 ## Integrantes 
 
-markdown
-
 | Nome | RA | GitHub |
 | -------- | -------- | -------- |
 | Alecsandro  | H007DG5 | https://github.com/AlecsandroH |
